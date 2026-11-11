@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Les 7 dîners de la semaine : menus de saison à changer d'un clic, recettes imprimables et liste de courses par rayon.">
+  <title>Poupibouffe</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <div class="brand">Poupibouffe</div>
+        <div class="eyebrow" id="weekLabel">Semaine</div>
+        <h1>Les <em>7 dîners</em> de la semaine</h1>
+      </div>
+      <div class="header-tools">
+        <div class="servings" aria-label="Nombre de couverts">
+          <span>Couverts</span>
+          <button class="round" id="minus" aria-label="Un couvert de moins">−</button>
+          <b class="num" id="servings">4</b>
+          <button class="round" id="plus" aria-label="Un couvert de plus">+</button>
+        </div>
+        <button class="btn ghost" id="newWeek">Nouvelle semaine</button>
+      </div>
+    </header>
+
+    <div class="main">
+      <section aria-label="Menus des soirs">
+        <div class="days" id="days"></div>
+        <p class="hint">Cliquez sur un soir pour voir sa recette. « Changer » remplace aussitôt le plat, et la liste de courses suit.</p>
+      </section>
+      <article class="recipe" id="recipe" aria-live="polite"></article>
+    </div>
+
+    <section class="shop" id="shop" aria-labelledby="shopTitle">
+      <div class="shop-head">
+        <div>
+          <div class="eyebrow" id="shopSub">Pour 4 personnes · 7 dîners</div>
+          <h2 id="shopTitle">Liste de courses</h2>
+        </div>
+        <div class="shop-actions">
+          <button class="btn ghost" id="uncheck">Tout décocher</button>
+          <button class="btn" id="printList">Imprimer la liste</button>
+        </div>
+      </div>
+      <ol class="print-week" id="printWeek"></ol>
+      <div class="aisles" id="aisles"></div>
+    </section>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
