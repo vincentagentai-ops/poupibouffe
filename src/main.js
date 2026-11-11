@@ -1,7 +1,9 @@
 import "./style.css";
-import { RECETTES, RAYONS, PLACARD, SEMAINE_PAR_DEFAUT, recetteParId } from "./recettes.js";
+import { RECETTES, RAYONS, PLACARD, SEMAINE_PAR_DEFAUT, recetteParId, photo } from "./recettes.js";
 import { ajuster, formaterQuantite, nomIngredient } from "./quantites.js";
 import { listeDeCourses } from "./courses.js";
+import { fusionner } from "./catalogue.js";
+import { pageRecettes } from "./editeur.js";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const CLE_LOCALE = "poupibouffe-v1";
@@ -10,11 +12,20 @@ const CLE_LOCALE = "poupibouffe-v1";
 // avec une copie dans le navigateur si le serveur ne répond pas.
 const etat = { semaine: SEMAINE_PAR_DEFAUT.map(recetteParId), couverts: 4, coches: {}, courant: 0 };
 
+// Catalogue : recettes de base + modifications faites depuis la page Recettes (/api/recettes).
+let modifs = {};
+let catalogue = RECETTES;
+const parId = id => catalogue.find(r => r.id === id);
+
 const versJson = () => ({ semaine: etat.semaine.map(r => r.id), couverts: etat.couverts, coches: etat.coches });
 function appliquer(donnees) {
   if (!donnees) return false;
-  const semaine = Array.isArray(donnees.semaine) ? donnees.semaine.map(recetteParId) : [];
-  if (semaine.length !== 7 || semaine.some(r => !r)) return false;
+  const ids = Array.isArray(donnees.semaine) ? donnees.semaine : [];
+  if (ids.length !== 7) return false;
+  // Une recette du menu supprimée entre-temps est remplacée par une autre au hasard.
+  const libres = melanger(catalogue.filter(r => !ids.includes(r.id)));
+  const semaine = ids.map(id => parId(id) ?? libres.pop());
+  if (semaine.some(r => !r)) return false;
   etat.semaine = semaine;
   etat.couverts = Number.isInteger(donnees.couverts) ? Math.min(10, Math.max(1, donnees.couverts)) : 4;
   etat.coches = donnees.coches && typeof donnees.coches === "object" ? donnees.coches : {};
@@ -23,7 +34,15 @@ function appliquer(donnees) {
 const lireLocal = () => { try { return JSON.parse(localStorage.getItem(CLE_LOCALE) || "null"); } catch { return null; } };
 const ecrireLocal = v => { try { localStorage.setItem(CLE_LOCALE, JSON.stringify(v)); } catch { /* stockage indisponible */ } };
 
+async function chargerCatalogue() {
+  try {
+    const rep = await fetch("/api/recettes", { cache: "no-store" });
+    if (rep.ok) modifs = (await rep.json()).modifs ?? {};
+  } catch { /* serveur absent : recettes de base */ }
+  catalogue = fusionner(RECETTES, modifs);
+}
 async function charger() {
+  await chargerCatalogue();
   try {
     const rep = await fetch("/api/etat", { cache: "no-store" });
     if (rep.ok && appliquer(await rep.json())) return;
@@ -54,7 +73,7 @@ function melanger(liste) {
   for (let k = l.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [l[k], l[j]] = [l[j], l[k]]; }
   return l;
 }
-const autresRecettes = n => melanger(RECETTES.filter(r => !etat.semaine.some(s => s.id === r.id))).slice(0, n);
+const autresRecettes = n => melanger(catalogue.filter(r => !etat.semaine.some(s => s.id === r.id))).slice(0, n);
 
 // Soirs
 const ICONE_CHANGER = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M13 5.5A5.5 5.5 0 0 0 3.2 4M3 10.5A5.5 5.5 0 0 0 12.8 12"/><path d="M3 1.5V4.5H6M13 14.5V11.5H10"/></svg>';
@@ -62,6 +81,7 @@ function afficherSoirs() {
   $("days").innerHTML = etat.semaine.map((r, i) => `
     <div class="day" role="button" tabindex="0" data-i="${i}" aria-current="${i === etat.courant}">
       <div class="when"><b>${JOURS[i].slice(0, 3)}.</b><span class="num">${dateDuJour(i).getDate()}</span></div>
+      <img class="thumb" src="${photo(r)}" alt="" width="800" height="600" loading="lazy">
       <div class="dish"><b>${echapper(r.nom)}</b>
         <div class="meta"><span class="num">${r.temps} min</span>${r.tags.map(t => `<span class="tag ${t === "végé" ? "veg" : ""}">${echapper(t)}</span>`).join("")}</div>
       </div>
@@ -92,6 +112,7 @@ function afficherRecette() {
   const i = etat.courant, r = etat.semaine[i];
   if (!propositions[i] || propositions[i].some(a => etat.semaine.some(s => s.id === a.id))) propositions[i] = autresRecettes(3);
   $("recipe").innerHTML = `
+    <img class="hero" src="${photo(r)}" alt="${echapper(r.nom)}" width="800" height="600">
     <div class="recipe-head">
       <div class="eyebrow">${JOURS[i]} ${formaterJour(dateDuJour(i))} · dîner</div>
       <h2>${echapper(r.nom)}</h2>
@@ -105,12 +126,12 @@ function afficherRecette() {
     </div>
     <div class="replace">
       <h3>Remplacer ce dîner par…</h3>
-      <div class="alts">${propositions[i].map(a => `<button class="alt" data-autre="${a.id}">${echapper(a.nom)}</button>`).join("")}</div>
+      <div class="alts">${propositions[i].map(a => `<button class="alt" data-autre="${a.id}"><img src="${photo(a)}" alt="" width="800" height="600" loading="lazy"><span>${echapper(a.nom)}</span></button>`).join("")}</div>
     </div>
     <div class="actions">
       <button class="btn" id="printRecipe">Imprimer la recette</button>
     </div>`;
-  $("recipe").querySelectorAll("[data-autre]").forEach(b => (b.onclick = () => remplacer(i, recetteParId(b.dataset.autre))));
+  $("recipe").querySelectorAll("[data-autre]").forEach(b => (b.onclick = () => remplacer(i, parId(b.dataset.autre))));
   $("printRecipe").onclick = () => imprimer("recette");
 }
 
@@ -149,17 +170,62 @@ function changerCouverts(n) { etat.couverts = Math.min(10, Math.max(1, n)); enre
 $("minus").onclick = () => changerCouverts(etat.couverts - 1);
 $("plus").onclick = () => changerCouverts(etat.couverts + 1);
 $("newWeek").onclick = () => {
-  etat.semaine = melanger(RECETTES).slice(0, 7); etat.coches = {}; etat.courant = 0;
+  etat.semaine = melanger(catalogue).slice(0, 7); etat.coches = {}; etat.courant = 0;
   enregistrer(); toutAfficher();
 };
 
+// Page Recettes : chaque modification est enregistrée sur le serveur, puis le catalogue et le menu sont mis à jour.
+async function appelApi(url, options) {
+  let rep;
+  try { rep = await fetch(url, options); } catch { throw new Error("Le serveur ne répond pas : modification non enregistrée."); }
+  const corps = await rep.json().catch(() => ({}));
+  if (!rep.ok) throw new Error(corps.erreur || "Modification refusée par le serveur.");
+  return corps;
+}
+function catalogueModifie(nouveau) {
+  modifs = nouveau;
+  catalogue = fusionner(RECETTES, modifs);
+  const avant = versJson().semaine.join();
+  appliquer(versJson());
+  if (versJson().semaine.join() !== avant) enregistrer();
+  toutAfficher();
+}
+const bibliotheque = pageRecettes({
+  racine: $("recettesPage"),
+  dialogue: $("editeur"),
+  catalogue: () => catalogue,
+  modifs: () => modifs,
+  async enregistrer(recette) {
+    const { modifs } = await appelApi(`/api/recettes/${recette.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(recette) });
+    catalogueModifie(modifs);
+  },
+  async supprimer(id, retablir) {
+    const { modifs } = await appelApi(`/api/recettes/${id}${retablir ? "?retablir" : ""}`, { method: "DELETE" });
+    catalogueModifie(modifs);
+  },
+  async envoyerPhoto(id, image) {
+    return (await appelApi(`/api/photos/${id}`, { method: "PUT", headers: { "Content-Type": "image/jpeg" }, body: image })).photo;
+  },
+});
+
+// Navigation entre le menu de la semaine et la page Recettes (#recettes)
+function afficherPage() {
+  const recettes = location.hash === "#recettes";
+  document.body.dataset.page = recettes ? "recettes" : "menus";
+  document.querySelectorAll("[data-nav]").forEach(a => a.setAttribute("aria-current", a.dataset.nav === document.body.dataset.page ? "page" : "false"));
+  if (recettes) bibliotheque.afficher();
+}
+window.addEventListener("hashchange", () => { afficherPage(); scrollTo(0, 0); });
+
 function toutAfficher() {
+  if (document.body.dataset.page === "recettes") bibliotheque.afficher();
   $("weekLabel").textContent = `Semaine du ${formaterJour(dateDuJour(0))} au ${formaterJour(dateDuJour(6))}`;
   $("servings").textContent = etat.couverts;
   afficherSoirs(); afficherRecette(); afficherCourses();
 }
 
 // Démarrage, puis resynchronisation quand on revient sur l'onglet (un autre appareil a pu changer le menu)
+afficherPage();
 toutAfficher();
 charger().then(toutAfficher);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) charger().then(toutAfficher); });

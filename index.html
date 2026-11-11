@@ -14,7 +14,13 @@
   <div class="wrap">
     <header>
       <div>
-        <div class="brand">Poupibouffe</div>
+        <div class="brand-row">
+          <div class="brand">Poupibouffe</div>
+          <nav class="tabs" aria-label="Pages">
+            <a href="#" data-nav="menus">Menus</a>
+            <a href="#recettes" data-nav="recettes">Recettes</a>
+          </nav>
+        </div>
         <div class="eyebrow" id="weekLabel">Semaine</div>
         <h1>Les <em>7 dîners</em> de la semaine</h1>
       </div>
@@ -51,7 +57,10 @@
       <ol class="print-week" id="printWeek"></ol>
       <div class="aisles" id="aisles"></div>
     </section>
+
+    <section class="library" id="recettesPage" aria-label="Toutes les recettes"></section>
   </div>
+  <dialog class="editor" id="editeur" aria-label="Modifier une recette"></dialog>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
