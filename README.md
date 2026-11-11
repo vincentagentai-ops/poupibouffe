@@ -8,10 +8,16 @@ Le menu, le nombre de couverts et les cases cochées de la liste de courses sont
 
 Depuis n'importe quel appareil connecté au Wi-Fi de la maison :
 
-- http://probook.local:8420
-- ou http://192.168.68.107:8420 si le nom `probook.local` ne répond pas (certains Android)
+- http://192.168.68.107:8420 : marche partout, à ajouter à l'écran d'accueil des téléphones
+- ou http://probook.local:8420 sur les ordinateurs (Android 12 et d'autres ne comprennent pas les noms en `.local`)
 
-Si l'adresse IP du PC change (box redémarrée), la retrouver avec `hostname -I`.
+Si l'adresse IP du PC change (box redémarrée), la retrouver avec `hostname -I`. Pour qu'elle ne change plus, la réserver au PC dans les réglages DHCP du routeur.
+
+Le pare-feu du PC (ufw) doit laisser entrer le port 8420 depuis le réseau de la maison, sinon les appareils en Wi-Fi n'ont pas de réponse (ceux qui passent par Tailscale, eux, passent) :
+
+```bash
+sudo ufw allow from 192.168.68.0/22 to any port 8420 proto tcp comment 'Poupibouffe'
+```
 
 ## Comment ça tourne
 
