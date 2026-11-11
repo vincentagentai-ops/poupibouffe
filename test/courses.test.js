@@ -1,9 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { listeDeCourses } from "../src/courses.js";
-import { RECETTES, RAYONS, SEMAINE_PAR_DEFAUT, recetteParId } from "../src/recettes.js";
+import { existsSync } from "node:fs";
+import { RECETTES, RAYONS, SEMAINE_PAR_DEFAUT, recetteParId, photo } from "../src/recettes.js";
 
 const article = (liste, nom) => Object.values(liste).flat().find(a => a.cle === nom);
+
+test("chaque plat a sa photo", () => {
+  for (const r of RECETTES) assert.ok(existsSync(new URL(`../public${photo(r)}`, import.meta.url)), `photo manquante : public${photo(r)}`);
+});
 
 test("les recettes sont complètes et rangées dans des rayons connus", () => {
   const ids = new Set();
